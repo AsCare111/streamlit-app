@@ -2,9 +2,16 @@ import json
 import numpy as np
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from itertools import combinations
 import time
+import subprocess
+import sys
+
+# Установка matplotlib, если он отсутствует
+try:
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "matplotlib"])
+    import matplotlib.pyplot as plt
 
 DATA_FILE = "players_data.json"
 MATCH_HISTORY_FILE = "match_history.json"
@@ -52,6 +59,7 @@ nations = [
 ]
 
 def generate_balanced_teams():
+    from itertools import combinations
     all_combinations = list(combinations(players, 4))
     valid_combinations = []
     
@@ -92,7 +100,6 @@ if best_teams:
         for player in best_teams[1]:
             st.write(f"- {player} ({player_strengths[player]} очков)")
 
-    # График баланса сил команд
     fig, ax = plt.subplots()
     ax.bar(["Команда A", "Команда B"], [sum(player_strengths[p] for p in best_teams[0]), sum(player_strengths[p] for p in best_teams[1])])
     st.pyplot(fig)
