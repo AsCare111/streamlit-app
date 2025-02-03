@@ -1,40 +1,54 @@
 import json
 import numpy as np
-import pandas as pd
 import streamlit as st
-from itertools import combinations, permutations
-import random
+import pandas as pd
+import matplotlib.pyplot as plt
+from itertools import combinations
+import time
 
 DATA_FILE = "players_data.json"
+MATCH_HISTORY_FILE = "match_history.json"
 
-def load_data():
+def load_data(file):
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
+        with open(file, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return {}
 
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+def save_data(data, file):
+    with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-players_data = load_data()
+players_data = load_data(DATA_FILE)
+match_history = load_data(MATCH_HISTORY_FILE)
 players = list(players_data.keys())
 
-def calculate_strengths(data):
-    strengths = {}
-    for player, stats in data.items():
-        total_wins = sum(stats["wins"].values())
-        strengths[player] = np.log1p(total_wins) * 100 / max(1, np.log1p(max(total_wins, 1)))
-    return strengths
+def calculate_strengths():
+    base_strengths = {
+        "Сережа": 100,
+        "Марина": 85,
+        "Ваня": 70,
+        "Аскер": 65,
+        "Настя": 60,
+        "Руслан": 75,
+        "Никита": 55,
+        "Саша": 50
+    }
+    return base_strengths
 
-player_strengths = calculate_strengths(players_data)
+player_strengths = calculate_strengths()
 
 satr_constraints = [
     ("Сережа", "Марина"),
     ("Ваня", "Руслан"),
     ("Аскер", "Настя"),
     ("Никита", "Саша")
+]
+
+nations = [
+    "Австрия", "Алжир", "Англия", "Бавария", "Венгрия", "Венеция", "Дания", "Испания", "Нидерланды", "Польша",
+    "Португалия", "Пруссия", "Россия", "Саксония", "Турция", "Украина", "Франция", "Швеция", "Шотландия", "Пьемонт"
 ]
 
 def generate_balanced_teams():
@@ -72,22 +86,35 @@ if best_teams:
     with col1:
         st.write("### Команда A")
         for player in best_teams[0]:
-            st.write(f"- {player} ({round(player_strengths[player], 2)} очков)")
+            st.write(f"- {player} ({player_strengths[player]} очков)")
     with col2:
         st.write("### Команда B")
         for player in best_teams[1]:
-            st.write(f"- {player} ({round(player_strengths[player], 2)} очков)")
+            st.write(f"- {player} ({player_strengths[player]} очков)")
+
+    # График баланса сил команд
+    fig, ax = plt.subplots()
+    ax.bar(["Команда A", "Команда B"], [sum(player_strengths[p] for p in best_teams[0]), sum(player_strengths[p] for p in best_teams[1])])
+    st.pyplot(fig)
 
 st.subheader("Статистика игроков")
 selected_player = st.selectbox("Выберите игрока", players)
 
 if selected_player:
     st.write(f"### {selected_player}")
-    st.write(f"**Очки:** {round(player_strengths[selected_player], 2)}")
+    st.write(f"**Очки:** {player_strengths[selected_player]}")
     st.write("**Победы против игроков:**")
-    for opponent, wins in players_data[selected_player]["wins"].items():
+    for opponent, wins in players_data.get(selected_player, {}).get("wins", {}).items():
         st.write(f"- {opponent}: {wins} побед")
-    st.write(f"**Чаще всего играет за:** {players_data[selected_player]['nation']}")
+    nation = st.selectbox("Выберите нацию для игрока", nations, index=nations.index(players_data.get(selected_player, {}).get("nation", "Австрия")))
+    players_data[selected_player]['nation'] = nation
+    save_data(players_data, DATA_FILE)
+    st.write(f"**Выбранная нация:** {nation}")
+
+st.subheader("История матчей")
+if match_history:
+    match_df = pd.DataFrame(match_history)
+    st.table(match_df.tail(10))
 
 st.subheader("Добавить победу")
 winner = st.selectbox("Кто победил?", players)
@@ -95,6 +122,15 @@ loser = st.selectbox("Кого победил?", players)
 
 if winner and loser and winner != loser:
     if st.button("Добавить результат"):
-        players_data[winner]["wins"][loser] = players_data[winner]["wins"].get(loser, 0) + 1
-        save_data(players_data)
+        players_data.setdefault(winner, {}).setdefault("wins", {})[loser] = players_data[winner]["wins"].get(loser, 0) + 1
+        save_data(players_data, DATA_FILE)
+        match_history.append({"Победитель": winner, "Проигравший": loser})
+        save_data(match_history, MATCH_HISTORY_FILE)
         st.success("Результат добавлен!")
+
+if st.button("Начать матч"):
+    st.write("Матч начинается через 60 секунд...")
+    for i in range(60, 0, -1):
+        st.write(f"Осталось времени: {i} секунд")
+        time.sleep(1)
+    st.write("Матч начался!")
