@@ -2,7 +2,8 @@ import json
 import numpy as np
 import pandas as pd
 import streamlit as st
-from itertools import combinations
+from itertools import combinations, permutations
+import random
 
 DATA_FILE = "players_data.json"
 
@@ -36,25 +37,34 @@ satr_constraints = [
     ("Никита", "Саша")
 ]
 
-all_combinations = list(combinations(players, 4))
-valid_combinations = []
+def generate_balanced_teams():
+    all_combinations = list(combinations(players, 4))
+    valid_combinations = []
+    
+    for team_a in all_combinations:
+        team_b = tuple(set(players) - set(team_a))
+        if all((p1 in team_a and p2 in team_b) or (p1 in team_b and p2 in team_a) for p1, p2 in satr_constraints):
+            valid_combinations.append((team_a, team_b))
 
-for team_a in all_combinations:
-    team_b = tuple(set(players) - set(team_a))
-    if all((p1 in team_a and p2 in team_b) or (p1 in team_b and p2 in team_a) for p1, p2 in satr_constraints):
-        valid_combinations.append((team_a, team_b))
-
-min_diff = float("inf")
-best_teams = None
-for team_a, team_b in valid_combinations:
-    strength_a = sum(player_strengths[p] for p in team_a)
-    strength_b = sum(player_strengths[p] for p in team_b)
-    diff = abs(strength_a - strength_b)
-    if diff < min_diff:
-        min_diff = diff
-        best_teams = (team_a, team_b)
+    min_diff = float("inf")
+    best_teams = None
+    
+    for team_a, team_b in valid_combinations:
+        strength_a = sum(player_strengths[p] for p in team_a)
+        strength_b = sum(player_strengths[p] for p in team_b)
+        diff = abs(strength_a - strength_b)
+        if diff < min_diff:
+            min_diff = diff
+            best_teams = (team_a, team_b)
+    
+    return best_teams
 
 st.title("Балансировщик команд для Казаки 3")
+
+if st.button("Перемешать составы"):
+    best_teams = generate_balanced_teams()
+else:
+    best_teams = generate_balanced_teams()
 
 if best_teams:
     st.subheader("Сбалансированные команды")
