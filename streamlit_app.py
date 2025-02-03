@@ -2,17 +2,11 @@ import json
 import numpy as np
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+from itertools import combinations
 import time
-import subprocess
-import sys
 
-# Установка matplotlib, если он отсутствует
-try:
-    import matplotlib.pyplot as plt
-except ModuleNotFoundError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "matplotlib"])
-    import matplotlib.pyplot as plt
-
+# Файл для хранения данных
 DATA_FILE = "players_data.json"
 MATCH_HISTORY_FILE = "match_history.json"
 
@@ -27,6 +21,7 @@ def save_data(data, file):
     with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
+# Загрузка данных
 players_data = load_data(DATA_FILE)
 match_history = load_data(MATCH_HISTORY_FILE)
 players = list(players_data.keys())
@@ -46,6 +41,7 @@ def calculate_strengths():
 
 player_strengths = calculate_strengths()
 
+# Ограничения на составы
 satr_constraints = [
     ("Сережа", "Марина"),
     ("Ваня", "Руслан"),
@@ -53,13 +49,13 @@ satr_constraints = [
     ("Никита", "Саша")
 ]
 
+# Доступные нации
 nations = [
     "Австрия", "Алжир", "Англия", "Бавария", "Венгрия", "Венеция", "Дания", "Испания", "Нидерланды", "Польша",
     "Португалия", "Пруссия", "Россия", "Саксония", "Турция", "Украина", "Франция", "Швеция", "Шотландия", "Пьемонт"
 ]
 
 def generate_balanced_teams():
-    from itertools import combinations
     all_combinations = list(combinations(players, 4))
     valid_combinations = []
     
