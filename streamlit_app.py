@@ -1,139 +1,115 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Leaderboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .leader-table { width: 100%; border-collapse: collapse; }
-        .leader-table td, .leader-table th { padding: 12px; border: 1px solid #ddd; }
-        .color-box { width: 20px; height: 20px; display: inline-block; }
-        .profile { display: none; }
-        .nav-button { margin: 10px; padding: 8px 16px; }
-        .player-row:hover { background-color: #f5f5f5; cursor: pointer; }
-        .selected-players { margin-top: 30px; }
-        .ready-text { opacity: 0.5; margin-left: 10px; }
-        .resting-text { opacity: 0.5; color: #666; }
-    </style>
-</head>
-<body>
-    <!-- Главная страница -->
-    <div id="main-page">
-        <h1>Лидерборд</h1>
-        <table class="leader-table">
-            <thead>
-                <tr>
-                    <th>Игрок</th>
-                    <th>Очки</th>
-                    <th>Цвет</th>
-                    <th>Победы</th>
-                    <th>Поражения</th>
-                    <th>Соотношение</th>
-                </tr>
-            </thead>
-            <tbody id="leaderboard-body">
-                <!-- Данные заполняются скриптом -->
-            </tbody>
-        </table>
-        <button class="nav-button" onclick="showMatchSetup()">Начать лютый разнос</button>
-    </div>
+import streamlit as st
 
-    <!-- Страница профиля -->
-    <div id="profile-page" class="profile">
-        <button class="nav-button" onclick="showMainPage()">Назад</button>
-        <div id="profile-content"></div>
-    </div>
+# Инициализируем состояние текущей страницы, если оно ещё не задано
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Главная"
 
-    <!-- Страница выбора игроков -->
-    <div id="match-setup" class="profile">
-        <button class="nav-button" onclick="showMainPage()">Назад</button>
-        <h2>Выберите участников (максимум 8)</h2>
-        <div id="players-list"></div>
-    </div>
+# Список страниц для навигации
+pages = ["Главная", "Профиль", "Выбор участников"]
 
-    <script>
-        const players = [
-            { name: 'Сергей', points: 95, color: 'red', wins: 20, losses: 5, frequentOpponents: ['Марина', 'Ваня'] },
-            { name: 'Марина', points: 90, color: 'purple', wins: 18, losses: 7, frequentOpponents: ['Сергей', 'Ваня'] },
-            { name: 'Ваня', points: 85, color: 'white', wins: 15, losses: 10, frequentOpponents: ['Сергей', 'Марина'] },
-            // Добавьте остальных игроков по аналогии
-        ];
+# Отображаем боковую панель с выбором страницы
+selected_page = st.sidebar.selectbox("Навигация", pages, index=pages.index(st.session_state.current_page))
+st.session_state.current_page = selected_page
 
-        // Инициализация таблицы лидеров
-        function initLeaderboard() {
-            const tbody = document.getElementById('leaderboard-body');
-            tbody.innerHTML = players.map(player => `
-                <tr class="player-row" onclick="showProfile('${player.name}')">
-                    <td>${player.name}</td>
-                    <td>${player.points}</td>
-                    <td><div class="color-box" style="background-color: ${player.color};"></div></td>
-                    <td>${player.wins}</td>
-                    <td>${player.losses}</td>
-                    <td>${(player.wins / player.losses).toFixed(2)}</td>
-                </tr>
-            `).join('');
-        }
+# Пример данных игроков
+players = [
+    {
+        "name": "Сергей",
+        "points": 95,
+        "color": "red",
+        "wins": 20,
+        "losses": 5,
+        "frequentOpponents": ["Марина", "Ваня"]
+    },
+    {
+        "name": "Марина",
+        "points": 90,
+        "color": "blue",
+        "wins": 18,
+        "losses": 7,
+        "frequentOpponents": ["Сергей", "Игорь"]
+    },
+    {
+        "name": "Игорь",
+        "points": 80,
+        "color": "green",
+        "wins": 15,
+        "losses": 10,
+        "frequentOpponents": ["Сергей", "Марина"]
+    }
+]
 
-        // Показать профиль игрока
-        function showProfile(playerName) {
-            const player = players.find(p => p.name === playerName);
-            document.getElementById('main-page').style.display = 'none';
-            document.getElementById('profile-page').style.display = 'block';
-            document.getElementById('profile-content').innerHTML = `
-                <h2>Профиль ${player.name}</h2>
-                <p>Победы: ${player.wins}</p>
-                <p>Поражения: ${player.losses}</p>
-                <p>Частые соперники: ${player.frequentOpponents.join(', ')}</p>
-            `;
-        }
+# Страница "Главная" – таблица лидеров
+if st.session_state.current_page == "Главная":
+    st.title("Таблица лидеров")
+    data = []
+    for player in players:
+        # Вычисляем соотношение побед/поражений
+        win_loss_ratio = round(player["wins"] / player["losses"], 2) if player["losses"] != 0 else player["wins"]
+        data.append({
+            "Игрок": player["name"],
+            "Очки": player["points"],
+            "Победы": player["wins"],
+            "Поражения": player["losses"],
+            "П/П": win_loss_ratio,
+            "Цвет": player["color"]
+        })
+    st.table(data)
+    
+    # Кнопка для перехода на страницу выбора участников
+    if st.button("Начать лютый разнос"):
+        st.session_state.current_page = "Выбор участников"
+        st.experimental_rerun()
 
-        // Навигация
-        function showMainPage() {
-            document.getElementById('main-page').style.display = 'block';
-            document.getElementById('profile-page').style.display = 'none';
-            document.getElementById('match-setup').style.display = 'none';
-        }
+# Страница "Профиль" – просмотр профиля игрока
+elif st.session_state.current_page == "Профиль":
+    st.title("Профиль игрока")
+    player_name = st.text_input("Введите имя игрока для просмотра профиля")
+    if player_name:
+        # Ищем игрока по имени (без учёта регистра)
+        player = next((p for p in players if p["name"].lower() == player_name.lower()), None)
+        if player:
+            st.subheader(player["name"])
+            st.write("Очки:", player["points"])
+            st.write("Победы:", player["wins"])
+            st.write("Поражения:", player["losses"])
+            st.write("Частые соперники:", ", ".join(player["frequentOpponents"]))
+        else:
+            st.error("Игрок не найден!")
 
-        // Страница выбора игроков
-        function showMatchSetup() {
-            document.getElementById('main-page').style.display = 'none';
-            document.getElementById('match-setup').style.display = 'block';
-            const container = document.getElementById('players-list');
-            container.innerHTML = players.map(player => `
-                <div class="player-item" onclick="togglePlayer(this, '${player.name}')">
-                    ${player.name}
-                    <span class="ready-text"></span>
-                </div>
-            `).join('');
-        }
+# Страница "Выбор участников" – выбор игроков для матча
+elif st.session_state.current_page == "Выбор участников":
+    st.title("Выбор участников матча")
+    max_players = 8
+    if "selected_players" not in st.session_state:
+        st.session_state.selected_players = []
 
-        let selectedPlayers = [];
-        function togglePlayer(element, playerName) {
-            const index = selectedPlayers.indexOf(playerName);
-            if (index > -1) {
-                selectedPlayers.splice(index, 1);
-                element.querySelector('.ready-text').textContent = '';
-            } else {
-                if (selectedPlayers.length < 8) {
-                    selectedPlayers.push(playerName);
-                    element.querySelector('.ready-text').textContent = 'готов';
-                }
-            }
-            updatePlayersList();
-        }
+    # Для каждого игрока создаём чекбокс с соответствующей надписью
+    for player in players:
+        is_selected = player["name"] in st.session_state.selected_players
 
-        function updatePlayersList() {
-            document.querySelectorAll('.player-item').forEach(item => {
-                const name = item.textContent.replace('готов', '').trim();
-                if (!selectedPlayers.includes(name) && selectedPlayers.length >= 8) {
-                    item.querySelector('.resting-text')?.remove();
-                    item.insertAdjacentHTML('beforeend', '<span class="resting-text">Сегодня отдыхает</span>');
-                }
-            });
-        }
+        if is_selected:
+            label = f"{player['name']} — готов"
+        elif len(st.session_state.selected_players) >= max_players:
+            label = f"{player['name']} — Сегодня отдыхает"
+        else:
+            label = player["name"]
 
-        // Инициализация при загрузке
-        window.onload = initLeaderboard;
-    </script>
-</body>
-</html>
+        # Разрешаем выбор, если игрок уже выбран или лимит ещё не достигнут
+        if is_selected or len(st.session_state.selected_players) < max_players:
+            if st.checkbox(label, value=is_selected, key=player["name"]):
+                if player["name"] not in st.session_state.selected_players:
+                    st.session_state.selected_players.append(player["name"])
+            else:
+                if player["name"] in st.session_state.selected_players:
+                    st.session_state.selected_players.remove(player["name"])
+        else:
+            st.checkbox(label, value=False, key=player["name"], disabled=True)
+
+    st.write("Выбрано:", st.session_state.selected_players)
+    if st.button("Подтвердить матч"):
+        if len(st.session_state.selected_players) == 0:
+            st.error("Выберите хотя бы одного игрока!")
+        else:
+            st.success("Матч подтвержден! Выбранные игроки: " + ", ".join(st.session_state.selected_players))
+
