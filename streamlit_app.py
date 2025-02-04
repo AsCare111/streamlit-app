@@ -71,28 +71,23 @@ def leaderboard_page():
     st.title("Таблица лидеров")
     st.markdown("Нажмите на имя игрока для просмотра профиля.")
     
-    # Кнопка "Обновить" для перерисовки страницы
-    if st.button("Обновить"):
-        st.experimental_rerun()
-
-    # Вставляем CSS для компактного отображения таблицы (без прокрутки)
+    # Вставляем CSS для уменьшения размера таблицы (компактное отображение)
     st.markdown("""
     <style>
     .leaderboard-container {
         width: 90%;
         margin: auto;
-        font-size: 10px;
-        line-height: 1.2;
-        max-height: 80vh;
-        overflow: hidden;
+        font-size: 12px;
     }
     </style>
     """, unsafe_allow_html=True)
+    
     st.markdown('<div class="leaderboard-container">', unsafe_allow_html=True)
     
     # Сортируем игроков по убыванию баллов
     sorted_players = sorted(st.session_state.players, key=lambda x: x["points"], reverse=True)
     
+    # Заголовок таблицы
     header_cols = st.columns([2, 1, 1, 1, 1, 1])
     headers = ["Игрок", "Очки", "Победы", "Поражения", "П/П", "Цвет"]
     for col, header in zip(header_cols, headers):
@@ -105,7 +100,6 @@ def leaderboard_page():
         if row_cols[0].button(player["name"], key="btn_" + player["name"]):
             st.session_state.selected_player = player["name"]
             st.session_state.current_page = "Профиль"
-            st.experimental_rerun()
         # Числовой ввод для изменения баллов
         new_points = row_cols[1].number_input("", value=player["points"], step=1, min_value=0, max_value=100, key="points_" + player["name"])
         player["points"] = new_points
@@ -125,7 +119,6 @@ def leaderboard_page():
     st.write("")
     if st.button("Начать лютый разнос"):
         st.session_state.current_page = "Выбор участников"
-        st.experimental_rerun()
 
 # ============================================================================
 # СТРАНИЦА 2: ПРОФИЛЬ ИГРОКА
@@ -152,7 +145,6 @@ def profile_page():
     
     if st.button("Вернуться на главную"):
         st.session_state.current_page = "Лидерборд"
-        st.experimental_rerun()
 
 # ============================================================================
 # СТРАНИЦА 3: ВЫБОР УЧАСТНИКОВ (ровно 8 игроков)
@@ -195,11 +187,9 @@ def selection_page():
             st.session_state.team_assignments = {}
             st.session_state.team1 = []
             st.session_state.team2 = []
-            st.experimental_rerun()
     
     if st.button("Вернуться на главную", key="back_from_selection"):
         st.session_state.current_page = "Лидерборд"
-        st.experimental_rerun()
 
 # ============================================================================
 # СТРАНИЦА 4: ФОРМИРОВАНИЕ КОМАНД (4 на 4)
@@ -237,7 +227,6 @@ def team_assignment_page():
                 st.session_state.team_assignments[name] = 1
             for name in best_partition[1]:
                 st.session_state.team_assignments[name] = 2
-        st.experimental_rerun()
 
     st.write("Настройте команды вручную:")
     for name in st.session_state.selected_players:
@@ -272,11 +261,9 @@ def team_assignment_page():
             st.error("Команды должны состоять ровно из 4 игроков каждая!")
         else:
             st.session_state.current_page = "Выбор победителя"
-            st.experimental_rerun()
     
     if st.button("Вернуться на главную", key="back_from_team_assignment"):
         st.session_state.current_page = "Лидерборд"
-        st.experimental_rerun()
 
 # ============================================================================
 # СТРАНИЦА 5: ВЫБОР ПОБЕДИТЕЛЯ И ОБНОВЛЕНИЕ СТАТИСТИКИ
@@ -318,19 +305,20 @@ def select_winner_page():
             if player:
                 player["losses"] += 1
         
+        # Обновляем частоту встреч с товарищами для обеих команд
         update_teammate_frequency(winning_team)
         update_teammate_frequency(losing_team)
         
         st.success(f"Результат подтверждён! {winner} победила.")
+        
+        # Сбрасываем распределение команд, но оставляем список выбранных игроков
         st.session_state.current_page = "Лидерборд"
         st.session_state.team_assignments = {}
         st.session_state.team1 = []
         st.session_state.team2 = []
-        st.experimental_rerun()
     
     if st.button("Вернуться на главную", key="back_from_winner"):
         st.session_state.current_page = "Лидерборд"
-        st.experimental_rerun()
 
 # ============================================================================
 # МЕТОД MAIN (ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ)
