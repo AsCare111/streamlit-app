@@ -75,7 +75,7 @@ def leaderboard_page():
     st.markdown("""
     <style>
     .leaderboard-container {
-        width: 30%;
+        width: 2%;
         margin: auto;
         font-size: 3px;
         line-height: 0.1;
