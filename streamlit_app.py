@@ -1,139 +1,97 @@
-import json
-import numpy as np
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from itertools import combinations
-import time
+import itertools
+import random
 
-# Файл для хранения данных
-DATA_FILE = "players_data.json"
-MATCH_HISTORY_FILE = "match_history.json"
+# Класс игрока с параметрами силы и ограничениями
+class Player:
+    def __init__(self, name, strength, enemies):
+        self.name = name
+        self.strength = strength  # Общая сила (суммарный % побед)
+        self.enemies = enemies    # Игроки, с которыми нельзя быть в команде (S.A.T.R)
+        self.nations = {}         # Статистика выбора наций
+        self.wins = 0             # Счётчик побед
 
-def load_data(file):
-    try:
-        with open(file, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+    def choose_nation(self):
+        # Симулируем выбор нации (пример: 3 варианта)
+        nation = random.choice(["Россия", "Франция", "Османская империя"])
+        self.nations[nation] = self.nations.get(nation, 0) + 1
+        return nation
 
-def save_data(data, file):
-    with open(file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+# Данные игроков (пример)
+players_data = {
+    "Сережа": {"strength": 95, "enemies": ["Марина"]},
+    "Марина": {"strength": 85, "enemies": ["Сережа", "Ваня"]},
+    "Ваня": {"strength": 70, "enemies": ["Руслан"]},
+    "Руслан": {"strength": 65, "enemies": ["Ваня"]},
+    "Аскер": {"strength": 68, "enemies": ["Настя"]},
+    "Настя": {"strength": 62, "enemies": ["Аскер"]},
+    "Никита": {"strength": 58, "enemies": ["Саша"]},
+    "Саша": {"strength": 55, "enemies": ["Никита"]},
+}
 
-# Загрузка данных
-players_data = load_data(DATA_FILE)
-match_history = load_data(MATCH_HISTORY_FILE)
-players = list(players_data.keys())
+# Создаём объекты игроков
+players = [Player(name, data["strength"], data["enemies"]) for name, data in players_data.items()]
 
-def calculate_strengths():
-    base_strengths = {
-        "Сережа": 100,
-        "Марина": 85,
-        "Ваня": 70,
-        "Аскер": 65,
-        "Настя": 60,
-        "Руслан": 75,
-        "Никита": 55,
-        "Саша": 50
-    }
-    return base_strengths
-
-player_strengths = calculate_strengths()
-
-# Ограничения на составы
-satr_constraints = [
-    ("Сережа", "Марина"),
-    ("Ваня", "Руслан"),
-    ("Аскер", "Настя"),
-    ("Никита", "Саша")
-]
-
-# Доступные нации
-nations = [
-    "Австрия", "Алжир", "Англия", "Бавария", "Венгрия", "Венеция", "Дания", "Испания", "Нидерланды", "Польша",
-    "Португалия", "Пруссия", "Россия", "Саксония", "Турция", "Украина", "Франция", "Швеция", "Шотландия", "Пьемонт"
-]
-
-def generate_balanced_teams():
-    all_combinations = list(combinations(players, 4))
-    valid_combinations = []
-    
-    for team_a in all_combinations:
-        team_b = tuple(set(players) - set(team_a))
-        if all((p1 in team_a and p2 in team_b) or (p1 in team_b and p2 in team_a) for p1, p2 in satr_constraints):
-            valid_combinations.append((team_a, team_b))
-
-    min_diff = float("inf")
+# Функция балансировки команд
+def balance_teams(players):
+    best_diff = float('inf')
     best_teams = None
-    
-    for team_a, team_b in valid_combinations:
-        strength_a = sum(player_strengths[p] for p in team_a)
-        strength_b = sum(player_strengths[p] for p in team_b)
-        diff = abs(strength_a - strength_b)
-        if diff < min_diff:
-            min_diff = diff
-            best_teams = (team_a, team_b)
-    
+
+    # Перебираем возможные комбинации с учётом ограничений S.A.T.R
+    for combo in itertools.combinations(players, 4):
+        team1 = list(combo)
+        team2 = [p for p in players if p not in team1]
+
+        # Проверяем ограничения S.A.T.R
+        valid = True
+        for p in team1:
+            for enemy in p.enemies:
+                if enemy in [pl.name for pl in team1]:
+                    valid = False
+        if not valid:
+            continue
+
+        # Считаем разницу в силе команд
+        sum1 = sum(p.strength for p in team1)
+        sum2 = sum(p.strength for p in team2)
+        diff = abs(sum1 - sum2)
+
+        if diff < best_diff:
+            best_diff = diff
+            best_teams = (team1, team2)
+
     return best_teams
 
-st.title("Балансировщик команд для Казаки 3")
+# Симуляция матча
+def simulate_match(team1, team2):
+    total_str1 = sum(p.strength for p in team1)
+    total_str2 = sum(p.strength for p in team2)
+    
+    # Вероятность победы команды 1
+    prob = (total_str1 / (total_str1 + total_str2)) * 100
+    return random.choices([team1, team2], weights=[prob, 100 - prob])[0]
 
-if st.button("Перемешать составы"):
-    best_teams = generate_balanced_teams()
+# Запуск симуляции
+balanced_teams = balance_teams(players)
+if balanced_teams:
+    team1, team2 = balanced_teams
+
+    # Выбор наций
+    for p in team1 + team2:
+        p.choose_nation()
+
+    # Симулируем 10 матчей
+    for _ in range(10):
+        winner = simulate_match(team1, team2)
+        for p in winner:
+            p.wins += 1
+
+    # Вывод статистики
+    print("Команда 1:", [p.name for p in team1])
+    print("Команда 2:", [p.name for p in team2])
+    print("\nСтатистика игроков:")
+    for p in players:
+        print(f"{p.name}:")
+        print(f"  Побед: {p.wins}")
+        print(f"  Нации: {p.nations}")
 else:
-    best_teams = generate_balanced_teams()
-
-if best_teams:
-    st.subheader("Сбалансированные команды")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("### Команда A")
-        for player in best_teams[0]:
-            st.write(f"- {player} ({player_strengths[player]} очков)")
-    with col2:
-        st.write("### Команда B")
-        for player in best_teams[1]:
-            st.write(f"- {player} ({player_strengths[player]} очков)")
-
-    fig, ax = plt.subplots()
-    ax.bar(["Команда A", "Команда B"], [sum(player_strengths[p] for p in best_teams[0]), sum(player_strengths[p] for p in best_teams[1])])
-    st.pyplot(fig)
-
-st.subheader("Статистика игроков")
-selected_player = st.selectbox("Выберите игрока", players)
-
-if selected_player:
-    st.write(f"### {selected_player}")
-    st.write(f"**Очки:** {player_strengths[selected_player]}")
-    st.write("**Победы против игроков:**")
-    for opponent, wins in players_data.get(selected_player, {}).get("wins", {}).items():
-        st.write(f"- {opponent}: {wins} побед")
-    nation = st.selectbox("Выберите нацию для игрока", nations, index=nations.index(players_data.get(selected_player, {}).get("nation", "Австрия")))
-    players_data[selected_player]['nation'] = nation
-    save_data(players_data, DATA_FILE)
-    st.write(f"**Выбранная нация:** {nation}")
-
-st.subheader("История матчей")
-if match_history:
-    match_df = pd.DataFrame(match_history)
-    st.table(match_df.tail(10))
-
-st.subheader("Добавить победу")
-winner = st.selectbox("Кто победил?", players)
-loser = st.selectbox("Кого победил?", players)
-
-if winner and loser and winner != loser:
-    if st.button("Добавить результат"):
-        players_data.setdefault(winner, {}).setdefault("wins", {})[loser] = players_data[winner]["wins"].get(loser, 0) + 1
-        save_data(players_data, DATA_FILE)
-        match_history.append({"Победитель": winner, "Проигравший": loser})
-        save_data(match_history, MATCH_HISTORY_FILE)
-        st.success("Результат добавлен!")
-
-if st.button("Начать матч"):
-    st.write("Матч начинается через 60 секунд...")
-    for i in range(60, 0, -1):
-        st.write(f"Осталось времени: {i} секунд")
-        time.sleep(1)
-    st.write("Матч начался!")
+    print("Невозможно сбалансировать команды с текущими ограничениями.")
