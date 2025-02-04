@@ -77,8 +77,8 @@ def leaderboard_page():
     .leaderboard-container {
         width: 30%;
         margin: auto;
-        font-size: 10px;
-        line-height: 1.0;
+        font-size: 3px;
+        line-height: 0.1;
     }
     </style>
     """, unsafe_allow_html=True)
