@@ -1,5 +1,6 @@
 import streamlit as st
 import random
+from itertools import combinations
 
 # ============================================================================
 # ИНИЦИАЛИЗАЦИЯ SESSION STATE
@@ -20,7 +21,7 @@ if "team2" not in st.session_state:
 if "winner_team" not in st.session_state:
     st.session_state.winner_team = None
 
-# Если список игроков ещё не сохранён в session_state, сохраняем его.
+# Список игроков сохраняем в session_state, чтобы выбранные данные запоминались
 if "players" not in st.session_state:
     st.session_state.players = [
         {"name": "Сергей",  "points": 95, "wins": 0, "losses": 0, "color": "red",       "teammate_frequency": {}},
@@ -70,6 +71,19 @@ def leaderboard_page():
     st.title("Таблица лидеров")
     st.markdown("Нажмите на имя игрока для просмотра профиля.")
     
+    # Вставляем CSS для уменьшения размера таблицы (компактное отображение)
+    st.markdown("""
+    <style>
+    .leaderboard-container {
+        width: 90%;
+        margin: auto;
+        font-size: 12px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="leaderboard-container">', unsafe_allow_html=True)
+    
     # Сортируем игроков по убыванию баллов
     sorted_players = sorted(st.session_state.players, key=lambda x: x["points"], reverse=True)
     
@@ -82,13 +96,12 @@ def leaderboard_page():
     # Для каждого игрока – строка таблицы
     for player in sorted_players:
         row_cols = st.columns([2, 1, 1, 1, 1, 1])
-        # Имя игрока – кнопка перехода в профиль
+        # Кнопка для перехода в профиль
         if row_cols[0].button(player["name"], key="btn_" + player["name"]):
             st.session_state.selected_player = player["name"]
             st.session_state.current_page = "Профиль"
-        # Баллы – число, которое можно менять вручную (с шагом 1)
+        # Числовой ввод для изменения баллов
         new_points = row_cols[1].number_input("", value=player["points"], step=1, min_value=0, max_value=100, key="points_" + player["name"])
-        # Если значение изменилось, обновляем его
         player["points"] = new_points
         row_cols[2].write(player["wins"])
         row_cols[3].write(player["losses"])
@@ -98,8 +111,10 @@ def leaderboard_page():
             f"<div style='width:20px;height:20px;background-color:{player['color']};'></div>",
             unsafe_allow_html=True
         )
-        # Добавляем тонкую пунктирную линию-разделитель
+        # Тонкая пунктирная линия-разделитель
         st.markdown("<hr style='border-top: 1px dashed #ccc;'>", unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     st.write("")
     if st.button("Начать лютый разнос"):
@@ -165,11 +180,13 @@ def selection_page():
     if len(selected) != 8:
         st.warning("Для формирования команд требуется ровно 8 игроков.")
     
-    if st.button("Подтвердить матч") and len(selected) == 8:
-        st.session_state.current_page = "Формирование команд"
-        st.session_state.team_assignments = {}
-        st.session_state.team1 = []
-        st.session_state.team2 = []
+    # Если уже выбраны 8 игроков, даём возможность перейти к формированию команд без повторного выбора
+    if len(selected) == 8:
+        if st.button("Перейти к формированию команд"):
+            st.session_state.current_page = "Формирование команд"
+            st.session_state.team_assignments = {}
+            st.session_state.team1 = []
+            st.session_state.team2 = []
     
     if st.button("Вернуться на главную", key="back_from_selection"):
         st.session_state.current_page = "Лидерборд"
@@ -186,17 +203,30 @@ def team_assignment_page():
         st.error("Выбранных игроков должно быть ровно 8!")
         return
     
-    # Инициализируем назначение, если ещё не сделано
+    # Инициализируем назначения, если ещё не сделано
     for name in st.session_state.selected_players:
         if name not in st.session_state.team_assignments:
             st.session_state.team_assignments[name] = 1  # по умолчанию — команда 1
     
-    # Кнопка перемешивания: строго 4 на 4
+    # Кнопка «Перемешать команды»: оптимальное распределение по суммарным баллам
     if st.button("Перемешать команды"):
-        shuffled = st.session_state.selected_players.copy()
-        random.shuffle(shuffled)
-        for i, name in enumerate(shuffled):
-            st.session_state.team_assignments[name] = 1 if i < 4 else 2
+        selected = st.session_state.selected_players
+        best_diff = float('inf')
+        best_partition = None
+        # Перебор всех комбинаций из 4 игроков
+        for team1_candidate in combinations(selected, 4):
+            team1_sum = sum(get_player_by_name(name)["points"] for name in team1_candidate)
+            team2_candidate = [name for name in selected if name not in team1_candidate]
+            team2_sum = sum(get_player_by_name(name)["points"] for name in team2_candidate)
+            diff = abs(team1_sum - team2_sum)
+            if diff < best_diff:
+                best_diff = diff
+                best_partition = (list(team1_candidate), team2_candidate)
+        if best_partition is not None:
+            for name in best_partition[0]:
+                st.session_state.team_assignments[name] = 1
+            for name in best_partition[1]:
+                st.session_state.team_assignments[name] = 2
 
     st.write("Настройте команды вручную:")
     for name in st.session_state.selected_players:
@@ -207,8 +237,8 @@ def team_assignment_page():
             current_team = st.session_state.team_assignments.get(name, 1)
             new_team = st.selectbox("Команда", [1, 2], index=(current_team - 1), key=f"team_select_{name}")
             st.session_state.team_assignments[name] = new_team
-    
-    # Формируем списки команд согласно назначениям
+
+    # Формирование списков команд согласно назначениям
     team1 = [name for name in st.session_state.selected_players if st.session_state.team_assignments[name] == 1]
     team2 = [name for name in st.session_state.selected_players if st.session_state.team_assignments[name] == 2]
     
@@ -265,7 +295,7 @@ def select_winner_page():
             winning_team = team2
             losing_team = team1
         
-        # Обновляем статистику: +1 победа для выигравших и +1 поражение для проигравших
+        # Обновляем статистику: +1 победа для выигравших, +1 поражение для проигравших (очков не меняем)
         for name in winning_team:
             player = get_player_by_name(name)
             if player:
@@ -275,15 +305,14 @@ def select_winner_page():
             if player:
                 player["losses"] += 1
         
-        # Обновляем частоту встреч с товарищами
+        # Обновляем частоту встреч с товарищами для обеих команд
         update_teammate_frequency(winning_team)
         update_teammate_frequency(losing_team)
         
         st.success(f"Результат подтверждён! {winner} победила.")
         
-        # Сбрасываем выбранных игроков и распределения, переходим на Лидерборд
+        # Сбрасываем распределение команд, но оставляем список выбранных игроков
         st.session_state.current_page = "Лидерборд"
-        st.session_state.selected_players = []
         st.session_state.team_assignments = {}
         st.session_state.team1 = []
         st.session_state.team2 = []
@@ -309,6 +338,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
