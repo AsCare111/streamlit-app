@@ -71,15 +71,11 @@ def leaderboard_page():
     st.title("Таблица лидеров")
     st.markdown("Нажмите на имя игрока для просмотра профиля.")
     
-    # Кнопка "Обновить" для перерисовки страницы
-    if st.button("Обновить"):
-        st.experimental_rerun()
-    
     # Изменённый CSS: уменьшенная ширина и шрифт для компактного отображения таблицы
     st.markdown("""
     <style>
     .leaderboard-container {
-        width: 70%;
+        width: 30%;
         margin: auto;
         font-size: 10px;
         line-height: 1.0;
@@ -336,4 +332,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
