@@ -79,12 +79,10 @@ def leaderboard_page():
     st.markdown("""
     <style>
     .leaderboard-container {
-        width: 80%;
+        width: 70%;
         margin: auto;
         font-size: 10px;
         line-height: 1.0;
-        max-height: 80vh;
-        overflow: hidden;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -100,10 +98,12 @@ def leaderboard_page():
     
     for player in sorted_players:
         row_cols = st.columns([2, 1, 1, 1, 1, 1])
+        # Кнопка для перехода в профиль
         if row_cols[0].button(player["name"], key="btn_" + player["name"]):
             st.session_state.selected_player = player["name"]
             st.session_state.current_page = "Профиль"
             st.experimental_rerun()
+        # Числовой ввод для изменения баллов
         new_points = row_cols[1].number_input("", value=player["points"], step=1, min_value=0, max_value=100, key="points_" + player["name"])
         player["points"] = new_points
         row_cols[2].write(player["wins"])
@@ -182,6 +182,7 @@ def selection_page():
     if len(selected) != 8:
         st.warning("Для формирования команд требуется ровно 8 игроков.")
     
+    # Если уже выбраны 8 игроков, даём возможность перейти к формированию команд без повторного выбора
     if len(selected) == 8:
         if st.button("Перейти к формированию команд"):
             st.session_state.current_page = "Формирование команд"
@@ -204,14 +205,17 @@ def team_assignment_page():
         st.error("Выбранных игроков должно быть ровно 8!")
         return
     
+    # Инициализируем назначения, если ещё не сделано
     for name in st.session_state.selected_players:
         if name not in st.session_state.team_assignments:
-            st.session_state.team_assignments[name] = 1
+            st.session_state.team_assignments[name] = 1  # по умолчанию — команда 1
     
+    # Кнопка «Перемешать команды»: оптимальное распределение по суммарным баллам
     if st.button("Перемешать команды"):
         selected = st.session_state.selected_players
         best_diff = float('inf')
         best_partition = None
+        # Перебор всех комбинаций из 4 игроков
         for team1_candidate in combinations(selected, 4):
             team1_sum = sum(get_player_by_name(name)["points"] for name in team1_candidate)
             team2_candidate = [name for name in selected if name not in team1_candidate]
@@ -236,6 +240,7 @@ def team_assignment_page():
             new_team = st.selectbox("Команда", [1, 2], index=(current_team - 1), key=f"team_select_{name}")
             st.session_state.team_assignments[name] = new_team
 
+    # Формирование списков команд согласно назначениям
     team1 = [name for name in st.session_state.selected_players if st.session_state.team_assignments[name] == 1]
     team2 = [name for name in st.session_state.selected_players if st.session_state.team_assignments[name] == 2]
     
