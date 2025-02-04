@@ -310,8 +310,6 @@ def select_winner_page():
         update_teammate_frequency(losing_team)
         
         st.success(f"Результат подтверждён! {winner} победила.")
-        
-        # Сбрасываем распределение команд, но оставляем список выбранных игроков
         st.session_state.current_page = "Лидерборд"
         st.session_state.team_assignments = {}
         st.session_state.team1 = []
@@ -338,5 +336,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
